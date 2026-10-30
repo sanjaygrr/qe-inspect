@@ -1,0 +1,32 @@
+&CONTROL
+  calculation  = 'scf'
+  prefix       = 'Al'
+  outdir       = './tmp_a'
+  pseudo_dir   = './pseudo'
+/
+&SYSTEM
+  ibrav        = 2
+  celldm(1)    = 7.652
+  nat          = 1
+  ntyp         = 1
+  ecutwfc      = 30.0
+  ecutrho      = 120.0
+  nbnd         = 6
+  occupations  = 'smearing'
+  smearing     = 'mv'
+  degauss      = 0.02
+/
+&ELECTRONS
+  conv_thr = 1.0d-10
+  electron_maxstep = 4
+  diagonalization = 'cg'
+  startingwfc     = 'atomic'
+/
+ATOMIC_SPECIES
+  Al  26.98  Al.pz-vbc.UPF
+
+ATOMIC_POSITIONS {alat}
+  Al  0.0  0.0  0.0
+
+K_POINTS {automatic}
+  8 8 8  0 0 0
