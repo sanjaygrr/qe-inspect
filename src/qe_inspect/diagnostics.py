@@ -68,15 +68,15 @@ _KNOWN_ERRORS = [
         "The iterative diagonalization solves H psi = e S psi and needs a Cholesky "
         "factorization of the overlap matrix S in the subspace of trial vectors. "
         "It failed, which means that subspace became (nearly) linearly dependent. "
-        "Common causes are atoms that are too close (often a units mistake in "
-        "ATOMIC_POSITIONS or CELL_PARAMETERS), an ecutrho that is too low for "
-        "ultrasoft/PAW augmentation charges, a pseudopotential with ghost states, "
-        "or a numerical problem in the Davidson solver.",
+        "The most common cause is atoms that are too close, often a units mistake in "
+        "ATOMIC_POSITIONS or CELL_PARAMETERS. Other causes are numerical problems in "
+        "the Davidson solver and, with ultrasoft/PAW pseudopotentials, an overlap "
+        "operator S that is badly conditioned (problematic pseudopotential or low ecutrho).",
         [
             "Check the structure: minimum interatomic distances and the units of the positions and cell.",
-            "Switch the solver: diagonalization = 'cg' (slower but more robust), or 'ppcg'.",
+            "Switch the solver to diagonalization = 'cg' (slower but more robust).",
             "With the Davidson solver, try a smaller diago_david_ndim (e.g. 2).",
-            "For ultrasoft/PAW pseudopotentials, raise ecutrho.",
+            "With ultrasoft/PAW pseudopotentials, try another pseudopotential or a higher ecutrho.",
             "If it only happens in parallel runs, test with fewer MPI processes or another linear-algebra library.",
         ],
     ),
@@ -84,10 +84,13 @@ _KNOWN_ERRORS = [
         ("charge is wrong: smearing is needed",),
         "Wrong number of electrons with fixed occupations",
         "After the SCF the integrated charge differed from the number of electrons "
-        "by more than 1e-3 (relative), and occupations are fixed. This usually means "
-        "the system is metallic, or has a partially filled level, but was run as an insulator.",
+        "by more than 1e-3 (relative), and occupations are fixed. With fixed occupations "
+        "the electrons must fill an integer number of bands, so this usually means a metal "
+        "run as an insulator, or an open-shell system (e.g. an odd number of electrons "
+        "without spin polarization).",
         [
-            "Use occupations = 'smearing' with e.g. smearing = 'mv' and degauss = 0.01-0.02 Ry.",
+            "For a metal: occupations = 'smearing', e.g. smearing = 'mv' and degauss = 0.01-0.02 Ry as a starting value to test.",
+            "For an open-shell system: nspin = 2 with starting_magnetization (or tot_magnetization if the moment is known).",
             "Check tot_charge and the number of valence electrons of each pseudopotential.",
         ],
     ),
@@ -120,7 +123,8 @@ _KNOWN_ERRORS = [
         ("too few bands",),
         "nbnd is smaller than the number of occupied bands",
         "The number of Kohn-Sham states (nbnd) cannot hold all the electrons. "
-        "Insulators need at least nelec/2 bands (without spin polarization); with "
+        "Without spin polarization each band holds two electrons, so at least nelec/2 "
+        "bands are needed (with spin, enough for the larger spin channel); with "
         "smearing, pw.x also needs some empty bands above the Fermi level.",
         [
             "Remove nbnd from the input to use the pw.x default, or increase it.",
@@ -230,15 +234,22 @@ def _scf_not_converged(run: PwRun, cyc: ScfCycle) -> Finding:
         explanation = (
             f"The SCF{where} did not converge in {n_it} iterations and the estimated "
             f"accuracy goes up and down ({trend.rise_fraction:.0%} of recent steps "
-            "increase). This is the typical signature of charge sloshing: the density "
-            "mixing is too aggressive for this system."
+            "increase). This usually means the density mixing is too aggressive (charge "
+            "sloshing), but level crossings near the Fermi level or a magnetic or DFT+U "
+            "density that keeps switching produce the same pattern."
         )
         suggestions = [
             f"Reduce mixing_beta{beta}, e.g. to 0.3 or 0.1.",
             "Increase mixing_ndim (e.g. 12-16).",
             "For slabs, surfaces or inhomogeneous systems use mixing_mode = 'local-TF'.",
         ]
-        if not smearing:
+        if smearing:
+            suggestions.insert(
+                0,
+                "For a metal, check the setup first: a k-point mesh dense enough for the "
+                "smearing width, a degauss that is not too small, and enough empty bands.",
+            )
+        else:
             suggestions.append(
                 "If the system may be metallic, use occupations = 'smearing' and a few extra bands."
             )
@@ -252,12 +263,13 @@ def _scf_not_converged(run: PwRun, cyc: ScfCycle) -> Finding:
         suggestions = [
             f"Reduce mixing_beta{beta} and increase mixing_ndim.",
             "Restart from a different starting density or wavefunctions (startingwfc = 'atomic+random').",
-            "Check that conv_thr is not below the numerical noise (roughly 1e-12 Ry per atom is a practical floor).",
+            "If the accuracy sits at a floor (often around 1e-8 to 1e-10 Ry for large ultrasoft/PAW cells), "
+            "that is numerical noise: set conv_thr just above it.",
         ]
-        if not smearing:
-            suggestions.append(
-                "If the system may be metallic, use occupations = 'smearing'."
-            )
+        if smearing:
+            suggestions.append("For a metal, check that the k-point mesh and degauss are adequate.")
+        else:
+            suggestions.append("If the system may be metallic, use occupations = 'smearing'.")
     else:
         need = ""
         if acc and run.conv_thr and trend.decades_per_iteration > 0:
@@ -270,7 +282,7 @@ def _scf_not_converged(run: PwRun, cyc: ScfCycle) -> Finding:
         )
         suggestions = [
             "Increase electron_maxstep.",
-            f"Convergence is slow: a smaller mixing_beta{beta} or larger mixing_ndim may help.",
+            "A larger mixing_ndim can speed up slow but steady convergence.",
         ]
     return Finding("error", "scf_not_converged", "SCF did not converge", explanation, suggestions, evidence, cyc.line)
 
@@ -352,7 +364,7 @@ def _relax(run: PwRun) -> list[Finding]:
                 "usually happens when energies and forces are not consistent, because the "
                 f"SCF is not converged tightly enough or the thresholds are below the numerical noise.{detail}",
                 [
-                    "Tighten conv_thr (e.g. 1e-10 or lower) so forces are accurate.",
+                    "Tighten conv_thr (e.g. 1e-8 to 1e-10) so forces are accurate.",
                     "Loosen etot_conv_thr / forc_conv_thr if they are tighter than needed.",
                     "Restart from the last geometry, or try ion_dynamics = 'damp' (or 'fire' in recent versions).",
                 ],
@@ -380,22 +392,21 @@ def _relax(run: PwRun) -> list[Finding]:
         )
 
     finals = [c for c in run.scf_cycles if c.is_final_scf]
-    if run.calculation == "vc-relax" and finals and finals[-1].pressure_kbar is not None:
-        p = finals[-1].pressure_kbar
+    if run.calculation == "vc-relax" and finals and steps:
+        p_final, p_last = finals[-1].pressure_kbar, steps[-1].pressure_kbar
         thr = run.press_conv_thr or 0.5
-        if abs(p) > 2 * thr:
-            prev = steps[-1].pressure_kbar if steps else None
-            prev_txt = f" (last relaxation step: {prev:.2f} kbar)" if prev is not None else ""
+        if p_final is not None and p_last is not None and abs(p_final - p_last) > max(1.0, thr):
             out.append(
                 Finding(
                     "warning",
                     "vcrelax_final_pressure",
-                    "Pressure changed in the final SCF",
-                    f"The final SCF at the relaxed cell gives P = {p:.2f} kbar{prev_txt}, more "
-                    f"than twice press_conv_thr = {thr:g}. The final SCF uses a fresh plane-wave "
-                    "basis for the new cell, so the difference is Pulay stress from an incomplete basis.",
+                    "Pressure jumped in the final SCF",
+                    f"The last relaxation step had P = {p_last:.2f} kbar, the final SCF at the "
+                    f"relaxed cell gives P = {p_final:.2f} kbar. The final SCF rebuilds the "
+                    "plane-wave basis for the new cell, so the jump is Pulay stress from an "
+                    "incomplete basis set.",
                     [
-                        "Increase ecutwfc (and ecutrho), or run another vc-relax starting from the final structure.",
+                        "Increase ecutwfc (and ecutrho) and run another vc-relax starting from the final structure.",
                     ],
                 )
             )
@@ -407,7 +418,7 @@ def _cutoffs(run: PwRun) -> Optional[Finding]:
         return None
     dual = run.ecutrho / run.ecutwfc
     types = " ".join(run.pseudo_types).lower()
-    augmented = "ultrasoft" in types or "projector" in types
+    augmented = "ultrasoft" in types or "projector" in types or "paw" in types
     if augmented and dual < 8:
         return Finding(
             "info",
@@ -626,8 +637,12 @@ def diagnose_ph(run: PhRun) -> list[Finding]:
                     "Small negative acoustic frequencies at Gamma",
                     f"{len(neg)} mode(s) at Gamma have small negative (imaginary) frequencies "
                     f"(lowest {min(neg):.2f} cm-1). At Gamma the acoustic modes should be zero; "
-                    "small deviations come from the acoustic sum rule not being imposed.",
-                    ["Impose the acoustic sum rule in dynmat.x or matdyn.x (asr = 'crystal')."],
+                    "small deviations usually come from the acoustic sum rule not being imposed. "
+                    "qe-inspect does not check that these are really the acoustic modes.",
+                    [
+                        "Impose the acoustic sum rule in dynmat.x or matdyn.x (asr = 'crystal'; 'zero-dim' for molecules).",
+                        "The sum rule does not fix residual forces: make sure the structure is relaxed first.",
+                    ],
                 )
             )
         elif at_gamma and len(neg) <= 6:

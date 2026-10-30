@@ -150,15 +150,15 @@ From `ph.x` (experimental): q points, irreducible representations, the
 | Crash | `Error in routine ...` block. Known messages get a specific explanation: `S matrix not positive definite`, `problems computing cholesky`, `charge is wrong` (with and without `smearing is needed`), `too many bands are not converged`, `too few bands`. Others are reported with routine and message. |
 | Unfinished job | No `JOB DONE.` and no QE error: reports where the output stops and any MPI or scheduler abort lines (if stderr was merged). |
 | `max_seconds` reached | `Maximum CPU time exceeded`; suggests `restart_mode = 'restart'`. |
-| SCF not converged | `convergence NOT achieved`. The accuracy history is classified as stopped early, oscillating (charge sloshing), stagnating or slowly converging, and the suggestions differ for each case (`electron_maxstep`, `mixing_beta`, `mixing_ndim`, `mixing_mode = 'local-TF'`, smearing). |
+| SCF not converged | `convergence NOT achieved`. The accuracy history is classified as stopped early, oscillating (usually mixing that is too aggressive), stagnating or slowly converging, and the suggestions differ for each case (`electron_maxstep`, `mixing_beta`, `mixing_ndim`, `mixing_mode = 'local-TF'`, smearing). |
 | Noisy SCF | A converged SCF that needed many iterations with an oscillating accuracy. |
 | Relaxation not converged | `The maximum number of steps has been reached.` or `bfgs failed after ...`, with the last BFGS energy and gradient errors compared to the thresholds. |
-| Pulay stress after vc-relax | Pressure of the final SCF far from the last relaxation step. |
+| Pulay stress after vc-relax | Pressure jump between the last relaxation step and the final SCF. |
 | Inaccurate forces | `SCF correction compared to forces is large`. |
 | Charge warnings | `WARNING: integrated charge=`, with the relative deviation and the thresholds QE uses. |
 | Diagonalization warnings | `c_bands: N eigenvalues not converged`, counted over the run. |
 | Cutoff ratio | Heuristic, not a QE message: `ecutrho/ecutwfc` below 8 with ultrasoft/PAW pseudopotentials, or below 4 with norm-conserving ones. `pw.x` does not print cutoff warnings itself. |
-| Phonons (experimental) | `No convergence has been achieved`; negative (imaginary) frequencies, separating small acoustic ones at Gamma (acoustic sum rule) from the rest. |
+| Phonons (experimental) | `No convergence has been achieved`; negative (imaginary) frequencies. At Gamma, a few negative modes are reported as a likely acoustic sum rule issue (without checking the eigenvectors); elsewhere as possible instabilities. |
 
 Every QE message matched above was checked against the QE source
 (`PW/src`, `Modules`, `LAXlib`, `PHonon/PH`) or against real output files.
