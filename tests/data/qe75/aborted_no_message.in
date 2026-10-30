@@ -1,0 +1,32 @@
+&CONTROL
+  calculation = 'scf'
+  prefix = 'walltime'
+  outdir = './tmp_walltime'
+  pseudo_dir = './pseudo'
+  max_seconds = 3
+/
+&SYSTEM
+  ibrav = 2
+  celldm(1) = 7.652
+  nat = 1
+  ntyp = 1
+  ecutwfc = 20.0
+  occupations = 'smearing'
+  smearing = 'mv'
+  degauss = 0.02
+  
+/
+&ELECTRONS
+  conv_thr = 1.0d-8
+  conv_thr = 1.0d-14
+/
+&IONS
+/
+&CELL
+/
+ATOMIC_SPECIES
+  Al 26.98 Al.pz-vbc.UPF
+ATOMIC_POSITIONS {alat}
+Al 0.0 0.0 0.0
+K_POINTS {automatic}
+  16 16 16 0 0 0
