@@ -98,3 +98,16 @@ def test_trend_stagnating():
 
 def test_trend_too_short():
     assert scf_trend([1e-3]).kind == "too_short"
+
+
+def test_concatenated_runs_use_the_last_one(tmp_path):
+    first = (DATA / "qe75/scf_maxstep.out").read_text()
+    second = (DATA / "qe75/aborted_no_message.out").read_text()
+    f = tmp_path / "appended.out"
+    f.write_text(first + second)
+    run = parse_file(f)
+    findings = diagnose(run)
+    assert run.runs_in_file == 2
+    assert status(run, findings) == "incomplete"
+    assert "several_runs" in {x.code for x in findings}
+    assert run.scf_cycles[0].line > len(first.splitlines())

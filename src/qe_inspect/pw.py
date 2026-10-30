@@ -58,7 +58,7 @@ IONIC_CONVERGED = (
 )
 
 
-def parse_pw(path: str | Path, lines: Optional[list[str]] = None) -> PwRun:
+def parse_pw(path: str | Path, lines: Optional[list[str]] = None, start: int = 0) -> PwRun:
     """Parse a pw.x output file. Never raises on truncated or odd files."""
     if lines is None:
         lines = read_lines(path)
@@ -79,7 +79,7 @@ def parse_pw(path: str | Path, lines: Optional[list[str]] = None) -> PwRun:
         run.scf_cycles.append(cyc)
         return cyc
 
-    i = 0
+    i = start
     n = len(lines)
     while i < n:
         line = lines[i]

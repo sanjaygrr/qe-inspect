@@ -208,8 +208,10 @@ file is in [`tests/data/README.md`](tests/data/README.md).
 - `ph.x` support is experimental and has been tested on few outputs.
 - The calculation type is inferred from the output, since `pw.x` does not print it.
 - Spin-polarized runs report only the spin-up Fermi energy in the summary.
-- Hybrid-functional (EXX) runs, NEB, and multiple runs concatenated in one file are
-  parsed only partially.
+- Hybrid-functional (EXX) runs and NEB are parsed only partially.
+- When several runs were appended to the same file, only the last one is analysed.
+- The whole file is read into memory, which is fine for typical outputs but not
+  ideal for very long MD runs.
 - The SCF trend classification and the cutoff-ratio check are heuristics. They are
   meant to point in the right direction, not to replace a convergence study.
 - Output formats change between QE versions. Fixtures cover 6.0 to 7.5; please open an

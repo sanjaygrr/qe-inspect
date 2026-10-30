@@ -18,7 +18,7 @@ RE_FREQ = re.compile(rf"freq \(\s*\d+\)\s*=\s*({FLOAT})\s*\[THz\]\s*=\s*({FLOAT}
 RE_TIMING = re.compile(r"^\s*PHONON\s*:\s*(.+?)\s*CPU\s+(.+?)\s*WALL")
 
 
-def parse_ph(path: str | Path, lines: Optional[list[str]] = None) -> PhRun:
+def parse_ph(path: str | Path, lines: Optional[list[str]] = None, start: int = 0) -> PhRun:
     if lines is None:
         lines = read_lines(path)
     run = PhRun(path=str(path), n_lines=len(lines))
@@ -27,7 +27,7 @@ def parse_ph(path: str | Path, lines: Optional[list[str]] = None) -> PhRun:
     in_dyn = False
     qpoint: Optional[PhQPoint] = None
 
-    i = 0
+    i = start
     n = len(lines)
     while i < n:
         line = lines[i]

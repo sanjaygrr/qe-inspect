@@ -75,6 +75,7 @@ class PwRun:
     mpi_processes: Optional[int] = None
     input_file: Optional[str] = None
     n_lines: int = 0
+    runs_in_file: int = 1
 
     # system summary
     nat: Optional[int] = None
@@ -181,6 +182,7 @@ class PhRun:
     mpi_processes: Optional[int] = None
     input_file: Optional[str] = None
     n_lines: int = 0
+    runs_in_file: int = 1
     tr2_ph: Optional[float] = None
     alpha_mix: Optional[float] = None
     q_points: list[PhQPoint] = field(default_factory=list)

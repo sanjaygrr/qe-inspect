@@ -185,6 +185,18 @@ def _where_pw(run: PwRun) -> str:
     return f"during SCF iteration {it}"
 
 
+def _multi_run(run: Union[PwRun, PhRun]) -> Optional[Finding]:
+    if run.runs_in_file <= 1:
+        return None
+    return Finding(
+        "info",
+        "several_runs",
+        f"The file contains {run.runs_in_file} runs",
+        "Several runs were written to the same file (e.g. a restart appended with >>). "
+        "Only the last one is analysed.",
+    )
+
+
 # --------------------------------------------------------------------------
 # pw.x
 # --------------------------------------------------------------------------
@@ -497,9 +509,9 @@ def diagnose_pw(run: PwRun) -> list[Finding]:
             )
         )
 
-    cut = _cutoffs(run)
-    if cut:
-        findings.append(cut)
+    for extra in (_cutoffs(run), _multi_run(run)):
+        if extra:
+            findings.append(extra)
 
     for msg in run.messages:
         if msg.text.startswith("c_bands"):
@@ -652,6 +664,9 @@ def diagnose_ph(run: PhRun) -> list[Finding]:
                 )
             )
 
+    multi = _multi_run(run)
+    if multi:
+        findings.append(multi)
     for msg in run.messages:
         if msg.routine:
             findings.append(Finding("info", "qe_message", f"Message from routine {msg.routine}", msg.text, [], None, msg.line))

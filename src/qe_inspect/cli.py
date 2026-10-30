@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
 
     files: list[Path] = []
     scanned_dir = False
+    input_error = False
     for raw in args.paths:
         path = Path(raw)
         if path.is_dir():
@@ -46,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
             files.append(path)
         else:
             print(f"qe-inspect: {path}: no such file or directory", file=sys.stderr)
-            return 2
+            input_error = True
 
     reports: list[Report] = []
     for f in files:
@@ -54,8 +55,7 @@ def main(argv: list[str] | None = None) -> int:
             reports.append(Report.from_run(parse_file(f)))
         except ValueError as exc:
             print(f"qe-inspect: {exc}", file=sys.stderr)
-            if not scanned_dir and len(files) == 1:
-                return 2
+            input_error = True
     if not reports:
         return 2
 
@@ -75,4 +75,6 @@ def main(argv: list[str] | None = None) -> int:
         base = dirs[0] if len(dirs) == 1 and len(args.paths) == 1 else None
         print(render_table(reports, color=color, base=base))
 
+    if input_error:
+        return 2
     return max(EXIT_CODES[r.status] for r in reports)

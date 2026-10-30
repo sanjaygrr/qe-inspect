@@ -56,3 +56,7 @@ def test_not_a_qe_file(tmp_path, capsys):
 
 def test_missing_file(capsys):
     assert main(["/nonexistent/file.out"]) == 2
+
+
+def test_bad_path_among_good_ones_returns_2(capsys):
+    assert main(["--no-color", str(DATA / "qe/pw_scf_si.out"), "/nonexistent/file.out"]) == 2
