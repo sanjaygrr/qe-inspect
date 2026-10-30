@@ -330,11 +330,11 @@ def parse_pw(path: str | Path, lines: Optional[list[str]] = None) -> PwRun:
             run.last_line = text.strip()
             break
 
-    if flags["md"] and not flags["minimization"]:
+    dynamics = (flags["md"] or flags["dyn"]) and not flags["minimization"]
+    if flags["vc"]:
+        run.calculation = "vc-md" if dynamics else "vc-relax"
+    elif dynamics:
         run.calculation = "md"
-    elif flags["vc"]:
-        moving = flags["dyn"] and not flags["minimization"]
-        run.calculation = "vc-md" if moving else "vc-relax"
     elif flags["relax"] or flags["minimization"]:
         run.calculation = "relax"
     elif flags["bands"]:

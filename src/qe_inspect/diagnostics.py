@@ -561,6 +561,18 @@ def diagnose_ph(run: PhRun) -> list[Finding]:
     findings: list[Finding] = []
     if run.error is not None:
         findings.append(_explain_error(run.error, "ph.x"))
+    elif run.walltime_reached:
+        findings.append(
+            Finding(
+                "warning",
+                "max_seconds",
+                "Stopped by max_seconds",
+                "ph.x stopped itself because the max_seconds limit was reached. "
+                "It saves its progress before stopping.",
+                ["Rerun ph.x with recover = .true. (same prefix, outdir and fildyn) to continue."],
+                "Maximum CPU time exceeded",
+            )
+        )
     elif not run.job_done:
         where = "before the first q point"
         if run.representations:
@@ -604,6 +616,23 @@ def diagnose_ph(run: PhRun) -> list[Finding]:
                     f"(lowest {min(neg):.2f} cm-1). At Gamma the acoustic modes should be zero; "
                     "small deviations come from the acoustic sum rule not being imposed.",
                     ["Impose the acoustic sum rule in dynmat.x or matdyn.x (asr = 'crystal')."],
+                )
+            )
+        elif at_gamma and len(neg) <= 6:
+            findings.append(
+                Finding(
+                    "info",
+                    "ph_negative_gamma",
+                    "Negative frequencies at Gamma: impose the sum rule before judging",
+                    f"{len(neg)} mode(s) at Gamma are negative (lowest {min(neg):.2f} cm-1). "
+                    "Up to three translations, and three rotations for an isolated molecule, "
+                    "should be zero. Without the acoustic sum rule they can come out clearly "
+                    "negative, especially with a noisy exchange-correlation potential "
+                    "(e.g. GGA with vacuum regions).",
+                    [
+                        "Apply the sum rule with dynmat.x: asr = 'crystal' for solids, 'zero-dim' for molecules.",
+                        "If modes stay imaginary after that, check relaxation and convergence parameters.",
+                    ],
                 )
             )
         else:
